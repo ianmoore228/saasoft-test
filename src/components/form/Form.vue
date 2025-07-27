@@ -1,55 +1,97 @@
 <script setup lang="ts">
+import { useStore } from '../../stores/store'
+// onMounted - метод, который вызывается после монтирования компонента
+import { onMounted, ref } from 'vue' 
 import "./form.css"
-import { ref } from 'vue'
 
-const auth = ref('Локальная')
+const store = useStore()
 
-console.log(auth.value)
-console.log(auth)
+// const auth = ref('Локальная')
+
+// Если учётных записей нет, то добавляем одну
+onMounted(() => {
+  if (store.accounts.length === 0) {
+    store.add()
+  }
+})
 
 </script>
 
 <template>
-    <section class="form">
-        <div class="form__wrapper" width="800">
-            <div class="form__title-wrapper">
-                <h1>Учётные записи</h1><v-btn icon="mdi-plus" variant="outlined" class="form__button"></v-btn>
-            </div>
-            <v-chip color="secondary" prepend-icon="mdi-help-circle" class="form__chip">
-                Для указания нескольких меток для одной пары логин/пароль используйте разделитель ;
-            </v-chip>
+  <section class="form">
+    <div class="form__wrapper">
+      <div class="form__title-wrapper">
+        <h1>Учётные записи</h1>
+        <v-btn class="form__button" icon="mdi-plus" variant="outlined" @click="store.add()" /> <!-- Добавление учётной записи -->  
+      </div>
 
-                <v-table class="form__table">
+      <v-chip color="secondary" prepend-icon="mdi-help-circle" class="form__chip">
+        Для указания нескольких меток для одной пары логин/пароль используйте разделитель ;
+      </v-chip>
 
-                    <tbody>
-                        <tr class="form__table-headers-row">
-                            <th class="form__table-header-cell form__table-header-cell_tags">Метки</th>
-                            <th class="form__table-header-cell form__table-header-cell_type">Тип записи</th>
-                            <th class="form__table-header-cell form__table-header-cell_login">Логин</th>
-                            <th class="form__table-header-cell form__table-header-cell_password">Пароль</th>
-                            <th class="form__table-header-cell form__table-header-cell_delete"></th>
-                        </tr>
-                        <tr>
-                            <td class="form__table-cell form__table-cell_tags"><v-text-field hide-details="auto"></v-text-field></td>
-                            <td class="form__table-cell form__table-cell_type"><v-select
-                                v-model="auth"
-                                class="form__select" hide-details="auto" :items="['Локальная', 'LDAP']"></v-select></td>
-                            <td class="form__table-cell form__table-cell_login" :colspan="auth === 'LDAP' ? 1 : 2"><v-text-field hide-details="auto"></v-text-field></td>
-                            <td class="form__table-cell form__table-cell_password" v-show="auth === 'LDAP'" ><v-text-field hide-details="auto"></v-text-field></td>
-                            <td class="form__table-cell form__table-cell_delete"><v-btn class="form__button" icon="mdi-trash-can-outline"></v-btn></td>
-                        </tr>
-                    </tbody>
-                </v-table>
-        
-        </div>
- 
-    </section>
+      <v-table class="form__table">
+        <tbody>
+          <tr class="form__table-headers-row">
+            <th class="form__table-header-cell form__table-header-cell_tags">Метки</th>
+            <th class="form__table-header-cell form__table-header-cell_type">Тип записи</th>
+            <th class="form__table-header-cell form__table-header-cell_login">Логин</th>
+            <th class="form__table-header-cell form__table-header-cell_password">Пароль</th>
+            <th class="form__table-header-cell form__table-header-cell_delete"></th>
+          </tr>
+
+          <!-- v-for - цикл, который проходит по всем учётным записям. :error - проп vuetify, который подсвечивает поле, если оно не прошло валидацию -->
+          <tr class="form__table-row" v-for="(acc, index) in store.accounts" :key="index">
+            <td class="form__table-cell">
+              <v-text-field
+                :model-value="acc.tagsRaw" 
+                @update:model-value="val => store.updateField(index, 'tagsRaw', val)" 
+                :error="acc.errors.tagsRaw === true" 
+                @blur="() => store.validateAndSave(index)"
+                hide-details="auto"
+              />
+            </td>
+
+            <td class="form__table-cell">
+              <v-select
+                :model-value="acc.type"
+                :items="['Локальная', 'LDAP']"
+                @update:model-value="val => { store.updateField(index, 'type', val); store.validateAndSave(index) }"
+                hide-details="auto"
+              />
+            </td>
+
+            <td class="form__table-cell" :colspan="acc.type === 'LDAP' ? 2 : 1">
+              <v-text-field
+                :model-value="acc.login"
+                @update:model-value="val => store.updateField(index, 'login', val)"
+                :error="acc.errors.login === true"
+                @blur="() => store.validateAndSave(index)"
+                hide-details="auto"
+              />
+            </td>
+
+            <td class="form__table-cell" v-show="acc.type === 'Локальная'">
+              <v-text-field
+                :model-value="acc.password"
+                @update:model-value="val => store.updateField(index, 'password', val)"
+                :error="acc.errors.password === true"
+                @blur="() => store.validateAndSave(index)"
+                hide-details="auto"
+              />
+            </td>
+
+            <td class="form__table-cell">
+              <v-btn class="form__button" icon="mdi-trash-can-outline" @click="store.remove(index)" />
+            </td>
+          </tr>
+        </tbody>
+      </v-table>
+    </div>
+  </section>
 </template>
 
 <style scoped>
-
 .form__button {
-    border-radius: 10px;
+  border-radius: 10px;
 }
-
 </style>
